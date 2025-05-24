@@ -11,7 +11,7 @@
 **Access the live application:** [https://smartscore.streamlit.app/](https://smartscore.streamlit.app/)
 
 ### 🔐 Login Credentials
-- **Username:** `Guest`
+- **Username:** `User`
 - **Password:** `abc@123`
 
 ## 📋 Table of Contents
