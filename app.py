@@ -155,7 +155,7 @@ def preprocess_input(df, scaler):
 
 # Authentication function
 def authenticate(username, password):
-    return username == "User" and word == "abc@123"
+    return username == "User" and password == "abc@123"
 
 # Risk scorecard calculation
 def calculate_risk_scorecard(prediction_proba, input_data):
