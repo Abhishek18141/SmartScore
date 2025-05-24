@@ -287,7 +287,7 @@ def main():
     # Sidebar
     with st.sidebar:
         st.markdown("### 👤 User Dashboard")
-        st.success(f"Welcome, Abhishek!")
+        st.success(f"Welcome to SmartScore!")
     
         if st.button("🚪 Logout"):
             st.session_state.authenticated = False
