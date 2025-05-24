@@ -268,7 +268,7 @@ def main():
         with col2:
             st.markdown("### 🔐 Secure Login")
             username = st.text_input("Username")
-            word = st.text_input("word", type="password")
+            password = st.text_input("Password", type="password")
             
             if st.button("Login", use_container_width=True):
                 if authenticate(username, password):
