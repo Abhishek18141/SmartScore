@@ -155,7 +155,7 @@ def preprocess_input(df, scaler):
 
 # Authentication function
 def authenticate(username, password):
-    return username == "Abhishek" and password == "Abhishek@88201"
+    return username == "User" and word == "abc@123"
 
 # Risk scorecard calculation
 def calculate_risk_scorecard(prediction_proba, input_data):
@@ -268,7 +268,7 @@ def main():
         with col2:
             st.markdown("### 🔐 Secure Login")
             username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
+            word = st.text_input("word", type="password")
             
             if st.button("Login", use_container_width=True):
                 if authenticate(username, password):
