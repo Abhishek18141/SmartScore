@@ -88,70 +88,77 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Load models (mock loading for demonstration)
+# Load models with error handling
 @st.cache_resource
 def load_models():
-    import pickle
-
-    with open("xgb_model_v2.pkl", "rb") as f:
-        xgb_model = pickle.load(f)
-    with open("minmax_scaler.pkl", "rb") as f:
-        scaler = pickle.load(f)
-
-    return xgb_model, scaler
-
+    try:
+        with open("xgb_model_v2.pkl", "rb") as f:
+            xgb_model = pickle.load(f)
+        with open("minmax_scaler.pkl", "rb") as f:
+            scaler = pickle.load(f)
+        return xgb_model, scaler
+    except FileNotFoundError as e:
+        st.error(f"Model files not found: {e}")
+        return None, None
+    except Exception as e:
+        st.error(f"Error loading models: {e}")
+        return None, None
 
 # Preprocessing function
 def preprocess_input(df, scaler):
     """Preprocess input data for model prediction"""
-    df_copy = df.copy()
-    
-    # Handle 'term'
-    df_copy['term'] = df_copy['term'].str.extract(r'(\d+)').astype(float)
-    
-    # Handle 'sub_grade'
-    df_copy['sub_grade'] = pd.Categorical(df_copy['sub_grade'], categories=[
-        'A1', 'A2', 'A3', 'A4', 'A5',
-        'B1', 'B2', 'B3', 'B4', 'B5',
-        'C1', 'C2', 'C3', 'C4', 'C5',
-        'D1', 'D2', 'D3', 'D4', 'D5',
-        'E1', 'E2', 'E3', 'E4', 'E5',
-        'F1', 'F2', 'F3', 'F4', 'F5',
-        'G1', 'G2', 'G3', 'G4', 'G5'
-    ], ordered=True)
-    df_copy['sub_grade'] = df_copy['sub_grade'].cat.codes
-    
-    # Handle 'verification_status'
-    verification_mapping = {
-        'Not Verified': 0,
-        'Source Verified': 1,
-        'Verified': 2
-    }
-    df_copy['verification_status'] = df_copy['verification_status'].map(verification_mapping)
-    
-    # Handle 'home_ownership_encoded'
-    home_ownership_order = {
-        'OTHER': 0,
-        'RENT': 1,
-        'MORTGAGE': 2,
-        'OWN': 3
-    }
-    df_copy['home_ownership_encoded'] = df_copy['home_ownership_encoded'].map(home_ownership_order)
-    
-    # Cast numeric columns
-    num_cols = ['term', 'sub_grade', 'verification_status', 'home_ownership_encoded', 'dti', 'int_rate', 'revol_util']
-    for col in num_cols:
-        if col in df_copy.columns:
-            df_copy[col] = df_copy[col].astype('float32')
-    
-    # Select only model features
-    model_features = ['term', 'int_rate', 'sub_grade', 'verification_status', 'dti', 'revol_util', 'home_ownership_encoded']
-    df_model = df_copy[model_features]
-    
-    # Scale the data
-    df_scaled = scaler.transform(df_model)
-    
-    return df_scaled, df_copy
+    try:
+        df_copy = df.copy()
+        
+        # Handle 'term'
+        df_copy['term'] = df_copy['term'].str.extract(r'(\d+)').astype(float)
+        
+        # Handle 'sub_grade'
+        df_copy['sub_grade'] = pd.Categorical(df_copy['sub_grade'], categories=[
+            'A1', 'A2', 'A3', 'A4', 'A5',
+            'B1', 'B2', 'B3', 'B4', 'B5',
+            'C1', 'C2', 'C3', 'C4', 'C5',
+            'D1', 'D2', 'D3', 'D4', 'D5',
+            'E1', 'E2', 'E3', 'E4', 'E5',
+            'F1', 'F2', 'F3', 'F4', 'F5',
+            'G1', 'G2', 'G3', 'G4', 'G5'
+        ], ordered=True)
+        df_copy['sub_grade'] = df_copy['sub_grade'].cat.codes
+        
+        # Handle 'verification_status'
+        verification_mapping = {
+            'Not Verified': 0,
+            'Source Verified': 1,
+            'Verified': 2
+        }
+        df_copy['verification_status'] = df_copy['verification_status'].map(verification_mapping)
+        
+        # Handle 'home_ownership_encoded'
+        home_ownership_order = {
+            'OTHER': 0,
+            'RENT': 1,
+            'MORTGAGE': 2,
+            'OWN': 3
+        }
+        df_copy['home_ownership_encoded'] = df_copy['home_ownership_encoded'].map(home_ownership_order)
+        
+        # Cast numeric columns
+        num_cols = ['term', 'sub_grade', 'verification_status', 'home_ownership_encoded', 'dti', 'int_rate', 'revol_util']
+        for col in num_cols:
+            if col in df_copy.columns:
+                df_copy[col] = df_copy[col].astype('float32')
+        
+        # Select only model features
+        model_features = ['term', 'int_rate', 'sub_grade', 'verification_status', 'dti', 'revol_util', 'home_ownership_encoded']
+        df_model = df_copy[model_features]
+        
+        # Scale the data
+        df_scaled = scaler.transform(df_model)
+        
+        return df_scaled, df_copy
+    except Exception as e:
+        st.error(f"Error in preprocessing: {e}")
+        return None, None
 
 # Authentication function
 def authenticate(username, password):
@@ -172,85 +179,105 @@ def calculate_risk_scorecard(prediction_proba, input_data):
     
     return scorecard
 
-# Analytics visualizations
+# Analytics visualizations - Fixed version without trendline
 def create_analytics(input_data, prediction_proba):
-    # Risk Distribution Pie Chart
-    fig1 = go.Figure(data=[go.Pie(
-        labels=['Low Risk', 'High Risk'],
-        values=[prediction_proba, 1-prediction_proba],
-        hole=.3,
-        marker_colors=['#2ecc71', '#e74c3c']
-    )])
-    fig1.update_layout(title="Risk Distribution", height=400)
-    
-    # Feature Importance (Mock data)
-    features = ['Interest Rate', 'DTI Ratio', 'Sub Grade', 'Term', 'Verification', 'Revolving Util', 'Home Ownership']
-    importance = [0.25, 0.20, 0.18, 0.15, 0.10, 0.08, 0.04]
-    
-    fig2 = px.bar(
-        x=features, y=importance,
-        title="Feature Importance in Risk Assessment",
-        color=importance,
-        color_continuous_scale='viridis'
-    )
-    fig2.update_layout(height=400, showlegend=False)
-    
-    # Risk Score Gauge
-    fig3 = go.Figure(go.Indicator(
-        mode = "gauge+number+delta",
-        value = int((1-prediction_proba)*1000),
-        domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': "Risk Score (0-1000)"},
-        delta = {'reference': 500},
-        gauge = {
-            'axis': {'range': [None, 1000]},
-            'bar': {'color': "darkblue"},
-            'steps': [
-                {'range': [0, 300], 'color': "lightgreen"},
-                {'range': [300, 700], 'color': "yellow"},
-                {'range': [700, 1000], 'color': "red"}
-            ],
-            'threshold': {
-                'line': {'color': "red", 'width': 4},
-                'thickness': 0.75,
-                'value': 750
+    try:
+        # Risk Distribution Pie Chart
+        fig1 = go.Figure(data=[go.Pie(
+            labels=['Low Risk', 'High Risk'],
+            values=[prediction_proba, 1-prediction_proba],
+            hole=.3,
+            marker_colors=['#2ecc71', '#e74c3c']
+        )])
+        fig1.update_layout(title="Risk Distribution", height=400)
+        
+        # Feature Importance (Mock data)
+        features = ['Interest Rate', 'DTI Ratio', 'Sub Grade', 'Term', 'Verification', 'Revolving Util', 'Home Ownership']
+        importance = [0.25, 0.20, 0.18, 0.15, 0.10, 0.08, 0.04]
+        
+        fig2 = px.bar(
+            x=features, y=importance,
+            title="Feature Importance in Risk Assessment",
+            color=importance,
+            color_continuous_scale='viridis'
+        )
+        fig2.update_layout(height=400, showlegend=False)
+        
+        # Risk Score Gauge
+        fig3 = go.Figure(go.Indicator(
+            mode = "gauge+number+delta",
+            value = int((1-prediction_proba)*1000),
+            domain = {'x': [0, 1], 'y': [0, 1]},
+            title = {'text': "Risk Score (0-1000)"},
+            delta = {'reference': 500},
+            gauge = {
+                'axis': {'range': [None, 1000]},
+                'bar': {'color': "darkblue"},
+                'steps': [
+                    {'range': [0, 300], 'color': "lightgreen"},
+                    {'range': [300, 700], 'color': "yellow"},
+                    {'range': [700, 1000], 'color': "red"}
+                ],
+                'threshold': {
+                    'line': {'color': "red", 'width': 4},
+                    'thickness': 0.75,
+                    'value': 750
+                }
             }
-        }
-    ))
-    fig3.update_layout(height=400)
-    
-    # Loan Amount vs Risk Correlation (Mock)
-    loan_amounts = np.linspace(5000, 50000, 20)
-    risk_scores = np.random.normal(500, 150, 20)
-    
-    fig4 = px.scatter(
-        x=loan_amounts, y=risk_scores,
-        title="Loan Amount vs Risk Score Correlation",
-        labels={'x': 'Loan Amount ($)', 'y': 'Risk Score'},
-        trendline="ols"
-    )
-    fig4.update_layout(height=400)
-    
-    return fig1, fig2, fig3, fig4
+        ))
+        fig3.update_layout(height=400)
+        
+        # Loan Amount vs Risk Correlation (Mock) - Removed trendline
+        loan_amounts = np.linspace(5000, 50000, 20)
+        risk_scores = np.random.normal(500, 150, 20)
+        
+        fig4 = px.scatter(
+            x=loan_amounts, y=risk_scores,
+            title="Loan Amount vs Risk Score Correlation",
+            labels={'x': 'Loan Amount ($)', 'y': 'Risk Score'}
+            # Removed trendline="ols" to avoid statsmodels dependency
+        )
+        
+        # Add a simple trend line manually
+        z = np.polyfit(loan_amounts, risk_scores, 1)
+        p = np.poly1d(z)
+        fig4.add_trace(go.Scatter(
+            x=loan_amounts, 
+            y=p(loan_amounts),
+            mode='lines',
+            name='Trend',
+            line=dict(color='red', dash='dash')
+        ))
+        
+        fig4.update_layout(height=400)
+        
+        return fig1, fig2, fig3, fig4
+    except Exception as e:
+        st.error(f"Error creating analytics: {e}")
+        return None, None, None, None
 
 # Download functions
 def create_download_data(input_data, prediction, prediction_proba, scorecard):
-    # Create comprehensive report
-    report_data = {
-        'Timestamp': [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-        'Loan_Amount': [input_data['loan_amnt']],
-        'Term': [input_data['term']],
-        'Interest_Rate': [input_data['int_rate']],
-        'Grade': [input_data['grade']],
-        'Sub_Grade': [input_data['sub_grade']],
-        'Annual_Income': [input_data['annual_inc']],
-        'DTI_Ratio': [input_data['dti']],
-        'Prediction': ['Approved' if prediction == 0 else 'Rejected'],
-        'Risk_Probability': [f"{prediction_proba:.4f}"],
-        'Risk_Score': [scorecard['Overall Risk Score']]
-    }
-    
-    return pd.DataFrame(report_data)
+    try:
+        # Create comprehensive report
+        report_data = {
+            'Timestamp': [datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+            'Loan_Amount': [input_data['loan_amnt']],
+            'Term': [input_data['term']],
+            'Interest_Rate': [input_data['int_rate']],
+            'Grade': [input_data['grade']],
+            'Sub_Grade': [input_data['sub_grade']],
+            'Annual_Income': [input_data['annual_inc']],
+            'DTI_Ratio': [input_data['dti']],
+            'Prediction': ['Approved' if prediction == 0 else 'Rejected'],
+            'Risk_Probability': [f"{prediction_proba:.4f}"],
+            'Risk_Score': [scorecard['Overall Risk Score']]
+        }
+        
+        return pd.DataFrame(report_data)
+    except Exception as e:
+        st.error(f"Error creating download data: {e}")
+        return pd.DataFrame()
 
 # Main application
 def main():
@@ -280,6 +307,10 @@ def main():
 
     # Load models
     model, scaler = load_models()
+    
+    if model is None or scaler is None:
+        st.error("⚠️ Unable to load ML models. Please check if model files are available.")
+        return
 
     # Header
     st.markdown('<h1 class="main-header">🏦 SmartScore</h1>', unsafe_allow_html=True)
@@ -341,7 +372,7 @@ def main():
                 ['< 1 year', '1 year', '2 years', '3 years', '4 years', '5 years', 
                  '6 years', '7 years', '8 years', '9 years', '10+ years'])
             home_ownership = st.selectbox("Home Ownership", ['OTHER', 'RENT', 'MORTGAGE','OWN'])
-            annual_inc = st.number_input("Annual Income ($)", min_value=20000, max_value=5000000, value=20000, step=5000)
+            annual_inc = st.number_input("Annual Income ($)", min_value=20000, max_value=5000000, value=50000, step=5000)
             verification_status = st.selectbox("Verification Status", ['Not Verified', 'Source Verified', 'Verified'])
             
             st.markdown("#### Financial Details")
@@ -350,58 +381,67 @@ def main():
                 'major_purchase', 'medical', 'small_business', 'car', 'vacation',
                 'moving', 'house', 'wedding', 'renewable_energy', 'educational'
             ])
-            dti = st.number_input("Debt-to-Income Ratio (%)", min_value=0.0, max_value=50.0, value=0.0, step=0.1)
-            delinq_2yrs = st.number_input("Delinquencies (2 years)", min_value=0, max_value=0, value=0)
-            open_acc = st.number_input("Open Credit Lines", min_value=1, max_value=50, value=1)
+            dti = st.number_input("Debt-to-Income Ratio (%)", min_value=0.0, max_value=50.0, value=15.0, step=0.1)
+            delinq_2yrs = st.number_input("Delinquencies (2 years)", min_value=0, max_value=10, value=0)
+            open_acc = st.number_input("Open Credit Lines", min_value=1, max_value=50, value=10)
             pub_rec = st.number_input("Public Records", min_value=0, max_value=10, value=0)
-            revol_util = st.number_input("Revolving Utilization (%)", min_value=0.0, max_value=100.0, value=0.0, step=0.1)
+            revol_util = st.number_input("Revolving Utilization (%)", min_value=0.0, max_value=100.0, value=50.0, step=0.1)
 
         # Action buttons
         col1, col2, col3 = st.columns(3)
         with col1:
             if st.button("🔮 Predict Risk", type="primary", use_container_width=True):
-                # Prepare input data
-                input_data = {
-                    'application_type': application_type,
-                    'loan_amnt': loan_amnt,
-                    'term': term,
-                    'int_rate': int_rate,
-                    'installment': installment,
-                    'grade': grade,
-                    'sub_grade': sub_grade,
-                    'emp_length': emp_length,
-                    'home_ownership_encoded': home_ownership,
-                    'annual_inc': annual_inc,
-                    'verification_status': verification_status,
-                    'purpose': purpose,
-                    'dti': dti,
-                    'delinq_2yrs': delinq_2yrs,
-                    'open_acc': open_acc,
-                    'pub_rec': pub_rec,
-                    'revol_util': revol_util
-                }
-                
-                # Convert to DataFrame
-                df_input = pd.DataFrame([input_data])
-                selected_columns = ['term', 'int_rate', 'sub_grade', 'verification_status', 'dti', 'revol_util', 'home_ownership_encoded']
-                filtered_df = df_input[selected_columns]
-                # Preprocess and predict
-                X_processed, df_processed = preprocess_input(filtered_df, scaler)
-                prediction = model.predict(X_processed)[0]
-                prediction_proba = model.predict_proba(X_processed)[0][1]
-                
-                # Calculate scorecard
-                scorecard = calculate_risk_scorecard(prediction_proba, input_data)
-                
-                # Store results
-                st.session_state.prediction_data = {
-                    'input_data': input_data,
-                    'prediction': prediction,
-                    'prediction_proba': prediction_proba,
-                    'scorecard': scorecard
-                }
-                
-                st.success("✅ Prediction completed! Check the Prediction Results tab.")
+                try:
+                    # Prepare input data
+                    input_data = {
+                        'application_type': application_type,
+                        'loan_amnt': loan_amnt,
+                        'term': term,
+                        'int_rate': int_rate,
+                        'installment': installment,
+                        'grade': grade,
+                        'sub_grade': sub_grade,
+                        'emp_length': emp_length,
+                        'home_ownership_encoded': home_ownership,
+                        'annual_inc': annual_inc,
+                        'verification_status': verification_status,
+                        'purpose': purpose,
+                        'dti': dti,
+                        'delinq_2yrs': delinq_2yrs,
+                        'open_acc': open_acc,
+                        'pub_rec': pub_rec,
+                        'revol_util': revol_util
+                    }
+                    
+                    # Convert to DataFrame
+                    df_input = pd.DataFrame([input_data])
+                    selected_columns = ['term', 'int_rate', 'sub_grade', 'verification_status', 'dti', 'revol_util', 'home_ownership_encoded']
+                    filtered_df = df_input[selected_columns]
+                    
+                    # Preprocess and predict
+                    X_processed, df_processed = preprocess_input(filtered_df, scaler)
+                    
+                    if X_processed is not None:
+                        prediction = model.predict(X_processed)[0]
+                        prediction_proba = model.predict_proba(X_processed)[0][1]
+                        
+                        # Calculate scorecard
+                        scorecard = calculate_risk_scorecard(prediction_proba, input_data)
+                        
+                        # Store results
+                        st.session_state.prediction_data = {
+                            'input_data': input_data,
+                            'prediction': prediction,
+                            'prediction_proba': prediction_proba,
+                            'scorecard': scorecard
+                        }
+                        
+                        st.success("✅ Prediction completed! Check the Prediction Results tab.")
+                    else:
+                        st.error("❌ Error processing input data.")
+                        
+                except Exception as e:
+                    st.error(f"❌ Error during prediction: {e}")
 
         with col2:
             if st.button("🧹 Clear Form", use_container_width=True):
@@ -471,17 +511,22 @@ def main():
         
         if st.session_state.prediction_data:
             data = st.session_state.prediction_data
-            fig1, fig2, fig3, fig4 = create_analytics(data['input_data'], data['prediction_proba'])
+            analytics_result = create_analytics(data['input_data'], data['prediction_proba'])
             
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.plotly_chart(fig1, use_container_width=True)
-                st.plotly_chart(fig2, use_container_width=True)
-            
-            with col2:
-                st.plotly_chart(fig3, use_container_width=True)
-                st.plotly_chart(fig4, use_container_width=True)
+            if all(fig is not None for fig in analytics_result):
+                fig1, fig2, fig3, fig4 = analytics_result
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.plotly_chart(fig1, use_container_width=True)
+                    st.plotly_chart(fig2, use_container_width=True)
+                
+                with col2:
+                    st.plotly_chart(fig3, use_container_width=True)
+                    st.plotly_chart(fig4, use_container_width=True)
+            else:
+                st.error("❌ Error generating analytics charts.")
                 
         else:
             st.info("📊 Analytics will be available after making a prediction.")
@@ -500,48 +545,54 @@ def main():
                 data['scorecard']
             )
             
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                # CSV download
-                csv = report_df.to_csv(index=False)
-                st.download_button(
-                    label="📄 Download CSV Report",
-                    data=csv,
-                    file_name=f"loan_prediction_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-            
-            with col2:
-                # JSON download
-                json_data = report_df.to_json(orient='records', indent=2)
-                st.download_button(
-                    label="📋 Download JSON Report",
-                    data=json_data,
-                    file_name=f"loan_prediction_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    mime="application/json",
-                    use_container_width=True
-                )
-            
-            with col3:
-                # Excel download
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    report_df.to_excel(writer, sheet_name='Loan_Prediction', index=False)
-                excel_data = output.getvalue()
+            if not report_df.empty:
+                col1, col2, col3 = st.columns(3)
                 
-                st.download_button(
-                    label="📊 Download Excel Report",
-                    data=excel_data,
-                    file_name=f"loan_prediction_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True
-                )
-            
-            # Display report preview
-            st.markdown('<h3 class="sub-header">Report Preview</h3>', unsafe_allow_html=True)
-            st.dataframe(report_df, use_container_width=True)
+                with col1:
+                    # CSV download
+                    csv = report_df.to_csv(index=False)
+                    st.download_button(
+                        label="📄 Download CSV Report",
+                        data=csv,
+                        file_name=f"loan_prediction_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                
+                with col2:
+                    # JSON download
+                    json_data = report_df.to_json(orient='records', indent=2)
+                    st.download_button(
+                        label="📋 Download JSON Report",
+                        data=json_data,
+                        file_name=f"loan_prediction_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                        mime="application/json",
+                        use_container_width=True
+                    )
+                
+                with col3:
+                    # Excel download
+                    try:
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            report_df.to_excel(writer, sheet_name='Loan_Prediction', index=False)
+                        excel_data = output.getvalue()
+                        
+                        st.download_button(
+                            label="📊 Download Excel Report",
+                            data=excel_data,
+                            file_name=f"loan_prediction_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            use_container_width=True
+                        )
+                    except ImportError:
+                        st.warning("Excel export not available. Please use CSV or JSON instead.")
+                
+                # Display report preview
+                st.markdown('<h3 class="sub-header">Report Preview</h3>', unsafe_allow_html=True)
+                st.dataframe(report_df, use_container_width=True)
+            else:
+                st.error("❌ Error generating report data.")
             
         else:
             st.info("📥 Reports will be available after making a prediction.")
