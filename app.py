@@ -89,6 +89,17 @@ st.markdown("""
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     }
+    
+    .bulk-summary {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        color: white;
+        text-align: center;
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin: 1rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -99,6 +110,12 @@ if 'prediction_made' not in st.session_state:
     st.session_state.prediction_made = False
 if 'prediction_data' not in st.session_state:
     st.session_state.prediction_data = None
+if 'bulk_prediction_made' not in st.session_state:
+    st.session_state.bulk_prediction_made = False
+if 'bulk_prediction_data' not in st.session_state:
+    st.session_state.bulk_prediction_data = None
+if 'current_tab' not in st.session_state:
+    st.session_state.current_tab = "Single Prediction"
 
 def login_page():
     """Display login page."""
@@ -125,6 +142,357 @@ def login_page():
         
         # credentials display
         st.info("**Credentials:**\n\nUsername: User\n\nPassword: Abc@123")
+
+def create_demo_format():
+    """Create demo format for bulk upload."""
+    demo_data = {
+        'applicant_id': ['APP001', 'APP002', 'APP003'],
+        'no_of_dependents': [2, 0, 1],
+        'education': ['Graduate', 'Not Graduate', 'Graduate'],
+        'self_employed': ['No', 'Yes', 'No'],
+        'income_annum': [500000, 300000, 800000],
+        'loan_amount': [2000000, 1500000, 3000000],
+        'loan_term': [15, 10, 20],
+        'cibil_score': [750, 650, 800],
+        'residential_assets_value': [2000000, 1000000, 3000000],
+        'commercial_assets_value': [500000, 0, 1000000],
+        'luxury_assets_value': [300000, 100000, 500000],
+        'bank_asset_value': [200000, 50000, 400000]
+    }
+    return pd.DataFrame(demo_data)
+
+def process_bulk_predictions(df):
+    """Process bulk predictions."""
+    try:
+        # Load model and scaler
+        model = load_model("credit_risk_model.h5")
+        scaler = joblib.load('scaler.pkl')
+        
+        results = []
+        
+        for index, row in df.iterrows():
+            features = {
+                'no_of_dependents': row['no_of_dependents'],
+                'education': row['education'],
+                'self_employed': row['self_employed'],
+                'income_annum': row['income_annum'],
+                'loan_amount': row['loan_amount'],
+                'loan_term': row['loan_term'],
+                'cibil_score': row['cibil_score'],
+                'residential_assets_value': row['residential_assets_value'],
+                'commercial_assets_value': row['commercial_assets_value'],
+                'luxury_assets_value': row['luxury_assets_value'],
+                'bank_asset_value': row['bank_asset_value']
+            }
+            
+            # Preprocessing
+            df_single = pd.DataFrame([features])
+            df_single['education'] = df_single['education'].map({'Graduate': 1, 'Not Graduate': 0})
+            df_single['self_employed'] = df_single['self_employed'].map({'Yes': 1, 'No': 0})
+            input_data = scaler.transform(df_single)
+            prediction = model.predict(input_data)
+            
+            # Calculate results
+            approval = True if prediction >= 0.5 else False
+            scorecard = int(prediction * 1000)
+            probability = float(prediction)
+            
+            result = {
+                'applicant_id': row['applicant_id'] if 'applicant_id' in row else f"APP{index+1:03d}",
+                'approval': approval,
+                'approval_status': 'Approved' if approval else 'Rejected',
+                'scorecard': scorecard,
+                'probability': probability,
+                'probability_percent': f"{probability:.2%}",
+                **features
+            }
+            results.append(result)
+        
+        return pd.DataFrame(results)
+    
+    except Exception as e:
+        st.error(f"Error processing predictions: {str(e)}")
+        return None
+
+def bulk_prediction_page():
+    """Display bulk prediction page."""
+    st.markdown('<div class="main-header">📊 Bulk Loan Prediction</div>', unsafe_allow_html=True)
+    
+    # Step 1: Download Demo Format
+    st.markdown("## 📥 Step 1: Download Demo Format")
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.info("Download the demo format, fill in your data, and upload it back for bulk predictions.")
+    
+    with col2:
+        demo_df = create_demo_format()
+        csv_demo = demo_df.to_csv(index=False)
+        st.download_button(
+            label="📋 Download Demo Format (CSV)",
+            data=csv_demo,
+            file_name=f"bulk_prediction_demo_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    # Display demo format
+    with st.expander("👁️ Preview Demo Format"):
+        st.dataframe(demo_df, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # Step 2: Upload Data
+    st.markdown("## 📤 Step 2: Upload Your Data")
+    uploaded_file = st.file_uploader(
+        "Choose a CSV file with loan applications",
+        type=['csv'],
+        help="Upload a CSV file with the same format as the demo file"
+    )
+    
+    if uploaded_file is not None:
+        try:
+            # Read uploaded file
+            df_upload = pd.read_csv(uploaded_file)
+            
+            # Validate columns
+            required_columns = [
+                'no_of_dependents', 'education', 'self_employed', 'income_annum',
+                'loan_amount', 'loan_term', 'cibil_score', 'residential_assets_value',
+                'commercial_assets_value', 'luxury_assets_value', 'bank_asset_value'
+            ]
+            
+            missing_columns = [col for col in required_columns if col not in df_upload.columns]
+            
+            if missing_columns:
+                st.error(f"Missing required columns: {', '.join(missing_columns)}")
+                st.info("Please ensure your file has all required columns as shown in the demo format.")
+            else:
+                st.success(f"✅ File uploaded successfully! Found {len(df_upload)} applications.")
+                
+                # Preview uploaded data
+                with st.expander("👁️ Preview Uploaded Data"):
+                    st.dataframe(df_upload.head(10), use_container_width=True)
+                
+                # Process predictions
+                if st.button("🔮 Process Bulk Predictions", type="primary", use_container_width=True):
+                    with st.spinner("Processing predictions... This may take a few moments."):
+                        results_df = process_bulk_predictions(df_upload)
+                        
+                        if results_df is not None:
+                            st.session_state.bulk_prediction_made = True
+                            st.session_state.bulk_prediction_data = results_df
+                            st.success("✅ Bulk predictions completed successfully!")
+                            st.rerun()
+        
+        except Exception as e:
+            st.error(f"Error reading file: {str(e)}")
+            st.info("Please ensure your file is a valid CSV with the correct format.")
+
+def bulk_results_dashboard():
+    """Display bulk prediction results dashboard."""
+    df = st.session_state.bulk_prediction_data
+    
+    st.markdown('<div class="main-header">📊 Bulk Prediction Results</div>', unsafe_allow_html=True)
+    
+    # Summary Statistics
+    total_applications = len(df)
+    approved_count = len(df[df['approval'] == True])
+    rejected_count = total_applications - approved_count
+    approval_rate = approved_count / total_applications
+    avg_scorecard = df['scorecard'].mean()
+    
+    # Summary Cards
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Applications", total_applications)
+    with col2:
+        st.metric("Approved", approved_count, f"{approval_rate:.1%}")
+    with col3:
+        st.metric("Rejected", rejected_count, f"{1-approval_rate:.1%}")
+    with col4:
+        st.metric("Avg Scorecard", f"{avg_scorecard:.0f}")
+    
+    st.markdown(f'<div class="bulk-summary">Approval Rate: {approval_rate:.1%} | Average Scorecard: {avg_scorecard:.0f}/1000</div>', unsafe_allow_html=True)
+    
+    # Dashboard Charts
+    st.markdown("## 📈 Analytics Dashboard")
+    
+    # Row 1: Approval Distribution and Scorecard Distribution
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Approval Pie Chart
+        approval_counts = df['approval_status'].value_counts()
+        fig_pie = px.pie(
+            values=approval_counts.values,
+            names=approval_counts.index,
+            title="Loan Approval Distribution",
+            color_discrete_map={'Approved': '#38ef7d', 'Rejected': '#ff6b6b'}
+        )
+        fig_pie.update_layout(height=400)
+        st.plotly_chart(fig_pie, use_container_width=True)
+    
+    with col2:
+        # Scorecard Distribution Histogram
+        fig_hist = px.histogram(
+            df, x='scorecard', nbins=20,
+            title="Scorecard Distribution",
+            color_discrete_sequence=['#667eea']
+        )
+        fig_hist.update_layout(height=400)
+        st.plotly_chart(fig_hist, use_container_width=True)
+    
+    # Row 2: CIBIL Score vs Approval and Income vs Loan Amount
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # CIBIL Score vs Approval
+        fig_scatter1 = px.scatter(
+            df, x='cibil_score', y='probability',
+            color='approval_status',
+            title="CIBIL Score vs Approval Probability",
+            color_discrete_map={'Approved': '#38ef7d', 'Rejected': '#ff6b6b'}
+        )
+        fig_scatter1.update_layout(height=400)
+        st.plotly_chart(fig_scatter1, use_container_width=True)
+    
+    with col2:
+        # Income vs Loan Amount
+        fig_scatter2 = px.scatter(
+            df, x='income_annum', y='loan_amount',
+            color='approval_status', size='scorecard',
+            title="Income vs Loan Amount (Size = Scorecard)",
+            color_discrete_map={'Approved': '#38ef7d', 'Rejected': '#ff6b6b'}
+        )
+        fig_scatter2.update_layout(height=400)
+        st.plotly_chart(fig_scatter2, use_container_width=True)
+    
+    # Row 3: Feature Analysis
+    st.markdown("### 🔍 Feature Analysis")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Education vs Approval
+        edu_approval = df.groupby(['education', 'approval_status']).size().unstack(fill_value=0)
+        fig_bar1 = px.bar(
+            edu_approval, 
+            title="Approval by Education Level",
+            color_discrete_map={'Approved': '#38ef7d', 'Rejected': '#ff6b6b'}
+        )
+        fig_bar1.update_layout(height=300)
+        st.plotly_chart(fig_bar1, use_container_width=True)
+    
+    with col2:
+        # Self Employment vs Approval
+        emp_approval = df.groupby(['self_employed', 'approval_status']).size().unstack(fill_value=0)
+        fig_bar2 = px.bar(
+            emp_approval,
+            title="Approval by Employment Type",
+            color_discrete_map={'Approved': '#38ef7d', 'Rejected': '#ff6b6b'}
+        )
+        fig_bar2.update_layout(height=300)
+        st.plotly_chart(fig_bar2, use_container_width=True)
+    
+    # Detailed Results Table
+    st.markdown("## 📋 Detailed Results")
+    
+    # Filter options
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        status_filter = st.selectbox("Filter by Status", ["All", "Approved", "Rejected"])
+    with col2:
+        min_scorecard = st.slider("Minimum Scorecard", 0, 1000, 0)
+    with col3:
+        show_rows = st.selectbox("Rows to display", [10, 25, 50, 100, "All"])
+    
+    # Apply filters
+    filtered_df = df.copy()
+    
+    if status_filter != "All":
+        filtered_df = filtered_df[filtered_df['approval_status'] == status_filter]
+    
+    filtered_df = filtered_df[filtered_df['scorecard'] >= min_scorecard]
+    
+    if show_rows != "All":
+        filtered_df = filtered_df.head(show_rows)
+    
+    # Display table
+    display_columns = [
+        'applicant_id', 'approval_status', 'scorecard', 'probability_percent',
+        'cibil_score', 'income_annum', 'loan_amount', 'loan_term'
+    ]
+    
+    st.dataframe(
+        filtered_df[display_columns],
+        use_container_width=True,
+        hide_index=True
+    )
+    
+    # Download Options
+    st.markdown("## 📥 Download Reports")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        # Download Complete Results
+        csv_complete = df.to_csv(index=False)
+        st.download_button(
+            label="📊 Complete Results (CSV)",
+            data=csv_complete,
+            file_name=f"bulk_predictions_complete_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    with col2:
+        # Download Approved Only
+        approved_df = df[df['approval'] == True]
+        csv_approved = approved_df.to_csv(index=False)
+        st.download_button(
+            label="✅ Approved Only (CSV)",
+            data=csv_approved,
+            file_name=f"bulk_predictions_approved_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    with col3:
+        # Download Rejected Only
+        rejected_df = df[df['approval'] == False]
+        csv_rejected = rejected_df.to_csv(index=False)
+        st.download_button(
+            label="❌ Rejected Only (CSV)",
+            data=csv_rejected,
+            file_name=f"bulk_predictions_rejected_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    with col4:
+        # Download Summary Report
+        summary_data = {
+            'Metric': ['Total Applications', 'Approved', 'Rejected', 'Approval Rate', 'Average Scorecard'],
+            'Value': [total_applications, approved_count, rejected_count, f"{approval_rate:.2%}", f"{avg_scorecard:.0f}"]
+        }
+        summary_df = pd.DataFrame(summary_data)
+        csv_summary = summary_df.to_csv(index=False)
+        st.download_button(
+            label="📈 Summary Report (CSV)",
+            data=csv_summary,
+            file_name=f"bulk_predictions_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    # Reset button
+    if st.button("🔄 New Bulk Prediction", type="primary"):
+        st.session_state.bulk_prediction_made = False
+        st.session_state.bulk_prediction_data = None
+        st.rerun()
 
 def loan_application_form():
     """Display loan application form."""
@@ -158,9 +526,8 @@ def loan_application_form():
             bank_asset_value = st.number_input("Bank Asset Value (₹)", min_value=0, value=0)
         
         submitted = st.form_submit_button("🔍 Predict Loan Approval", use_container_width=True)
-        
-        if submitted:
 
+        if submitted:
             features = {
                 'no_of_dependents': no_of_dependents,
                 'education': education,
@@ -413,14 +780,34 @@ def main():
                 st.session_state.logged_in = False
                 st.session_state.prediction_made = False
                 st.session_state.prediction_data = None
+                st.session_state.bulk_prediction_made = False
+                st.session_state.bulk_prediction_data = None
                 st.rerun()
             
             st.markdown("---")
+            
+            # Navigation
+            st.markdown("### 📋 Navigation")
+            tab_option = st.radio(
+                "Choose Prediction Type:",
+                ["Single Prediction", "Bulk Prediction"],
+                key="nav_radio"
+            )
+            st.session_state.current_tab = tab_option
+            
+            st.markdown("---")
             st.markdown("### 📋 Application Status")
-            if st.session_state.prediction_made:
-                st.info("✅ Prediction Complete")
+            
+            if tab_option == "Single Prediction":
+                if st.session_state.prediction_made:
+                    st.info("✅ Single Prediction Complete")
+                else:
+                    st.warning("⏳ Awaiting Single Application")
             else:
-                st.warning("⏳ Awaiting Application")
+                if st.session_state.bulk_prediction_made:
+                    st.info("✅ Bulk Prediction Complete")
+                else:
+                    st.warning("⏳ Awaiting Bulk Upload")
         else:
             st.info("Please login to continue")
         
@@ -438,15 +825,27 @@ def main():
             It predicts default probability,  
             generates risk scores & scorecards,  
             and provides a predictive dashboard.
+            
+            **New**: Bulk prediction capability  
+            for processing multiple applications  
+            with comprehensive analytics.
         """)
                 
     # Main content
     if not st.session_state.logged_in:
         login_page()
-    elif st.session_state.prediction_made:
-        display_prediction_results()
     else:
-        loan_application_form()
+        # Handle navigation based on current tab
+        if st.session_state.current_tab == "Single Prediction":
+            if st.session_state.prediction_made:
+                display_prediction_results()
+            else:
+                loan_application_form()
+        else:  # Bulk Prediction
+            if st.session_state.bulk_prediction_made:
+                bulk_results_dashboard()
+            else:
+                bulk_prediction_page()
 
 if __name__ == "__main__":
     main()
