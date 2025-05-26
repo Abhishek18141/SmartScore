@@ -8,12 +8,11 @@
 [![Machine Learning](https://img.shields.io/badge/ML-Credit%20Risk-green.svg)](https://github.com/Abhishek18141/SmartScore/)
 
 ## 🚀 Live Application
+**Access the application:** [https://smartscore.streamlit.app/](https://smartscore.streamlit.app/)
 
-**Access the live application:** [https://smartscore.streamlit.app/](https://smartscore.streamlit.app/)
-
-### 🔐 Login Credentials
+### Demo Credentials
 - **Username:** `User`
-- **Password:** `abc@123`
+- **Password:** `Abc@123`
 
 ## 📋 Overview
 
@@ -21,12 +20,19 @@ SmartScore is an intelligent credit risk assessment system that leverages machin
 
 ## ✨ Features
 
-- **Real-time Credit Assessment**: Instant loan approval probability calculation
-- **Machine Learning Powered**: Advanced ML model trained on comprehensive loan data
-- **Interactive Web Interface**: User-friendly Streamlit-based application
-- **Secure Authentication**: Protected access with login credentials
-- **Data Visualization**: Comprehensive insights and risk factor analysis
-- **Scalable Architecture**: Designed for production deployment
+- **Dual Prediction Modes**: Single application assessment and bulk processing capabilities
+- **Deep Learning Model**: Multilayer Perceptron (MLP) with 97.65% accuracy trained on 4,269+ records
+- **Real-time Analytics**: Interactive dashboards with Plotly visualizations
+- **Comprehensive Scoring**: Credit scorecard (0-1000) and probability assessment
+- **Advanced Visualizations**: 
+  - Gauge charts for scorecard display
+  - Feature importance analysis
+  - Asset distribution breakdowns
+  - Approval rate analytics
+- **Bulk Processing**: Upload CSV files for multiple loan applications
+- **Export Capabilities**: Download results in CSV/Excel formats with embedded charts
+- **Secure Authentication**: Protected access with user credentials
+- **Professional UI**: Modern styling with gradient designs and responsive layout
 
 ## 🏗️ Project Structure
 
@@ -43,10 +49,13 @@ SmartScore/
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: Streamlit
-- **Backend**: Python
-- **Machine Learning**: TensorFlow/Keras, Scikit-learn
+- **Frontend**: Streamlit with custom CSS styling
+- **Visualization**: Plotly Express & Plotly Graph Objects
+- **Machine Learning**: TensorFlow/Keras (Deep Learning MLP)
 - **Data Processing**: Pandas, NumPy
+- **Model Deployment**: Scikit-learn (preprocessing), Joblib (model serialization)
+- **File Processing**: XlsxWriter for Excel export
+- **Authentication**: Session-based login system
 - **Deployment**: Streamlit Cloud
 
 ## 📊 Dataset
@@ -56,11 +65,10 @@ The model is trained on a comprehensive loan approval dataset containing various
 **Dataset Source**: [Kaggle - Loan Approval Prediction Dataset](https://www.kaggle.com/datasets/architsharma01/loan-approval-prediction-dataset)
 
 ### Key Features:
-- Applicant demographics
-- Financial history
-- Loan characteristics
-- Credit scores
-- Employment details
+- **Comprehensive Analysis**: 11 input variables covering demographics, financials, and assets
+- **Advanced Preprocessing**: Feature scaling and categorical encoding
+- **Risk Categorization**: Multi-tier scoring system (0-400: High Risk, 400-600: Medium Risk, 600-800: Low Risk, 800-1000: Excellent)
+- **Real-time Processing**: Instant predictions for both single and bulk applications
 
 ## 🚀 Getting Started
 
@@ -92,20 +100,41 @@ The model is trained on a comprehensive loan approval dataset containing various
 
 ## 🔧 Usage
 
-1. **Login**: Use the provided credentials to access the application
-2. **Input Data**: Enter applicant information in the form fields
-3. **Assessment**: Click to generate credit risk assessment
-4. **Results**: View loan approval probability and risk factors
-5. **Analysis**: Explore detailed insights and recommendations
+### Single Loan Prediction
+1. **Login**: Use credentials (Username: `User`, Password: `Abc@123`)
+2. **Fill Application**: Complete the loan application form with:
+   - Personal Information (dependents, education, employment)
+   - Financial Details (income, loan amount, term, CIBIL score)
+   - Asset Information (residential, commercial, luxury, bank assets)
+3. **Get Results**: Receive instant approval/rejection with:
+   - Credit scorecard (0-1000 scale)
+   - Approval probability percentage
+   - Interactive dashboard with feature importance
+   - Asset distribution analysis
+4. **Download Reports**: Export application data, dashboard charts, or prediction reports
+
+### Bulk Loan Processing
+1. **Download Template**: Get the demo CSV format with required columns
+2. **Prepare Data**: Fill your loan applications in the template format
+3. **Upload & Process**: Upload CSV file for batch processing
+4. **Analyze Results**: View comprehensive analytics dashboard including:
+   - Overall approval rates and statistics
+   - Scorecard distribution histograms
+   - CIBIL score vs approval probability scatter plots
+   - Education and employment analysis
+5. **Export Reports**: Download complete results, approved/rejected lists, or summary reports
 
 ## 📈 Model Performance
 
-The credit risk model has been trained and validated using industry-standard metrics:
-- High accuracy in loan approval prediction
-- Balanced precision and recall scores
-- Robust performance across different customer segments
+The deep learning credit risk model demonstrates exceptional performance:
+- **Architecture**: Multilayer Perceptron (MLP) neural network
+- **Accuracy**: 97.65% on validation data
+- **Training Data**: 4,269+ loan application records
+- **Features**: 11 input variables including financial and demographic data
+- **Scoring Range**: 0-1000 credit scorecard with probability-based assessment
+- **Feature Importance**: CIBIL Score (77%), Loan Term (11%), Assets (5%), Income (3%), Education (2%), Loan Amount (2%)
 
-*Detailed model metrics and validation results are available in the Jupyter notebook.*
+*Detailed model architecture and validation metrics are available in the Jupyter notebook.*
 
 ## 🔐 Security Features
 
