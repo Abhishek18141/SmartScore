@@ -187,10 +187,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-⭐ **If you found this project helpful, please consider giving it a star!** ⭐
-
----
-
 **⭐ If you find SmartScore helpful, please consider giving it a star on GitHub!**
 
 [![GitHub stars](https://img.shields.io/github/stars/Abhishek18141/SmartScore.svg?style=social&label=Star)](https://github.com/Abhishek18141/SmartScore)
+
+---
